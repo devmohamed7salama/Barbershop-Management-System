@@ -21,7 +21,7 @@ public function login(Request $request)
         return response()->json(['message' => 'Invalid credentials'], 401);
     }
 
-    $token = $user->createToken($request->user_id)->plainTextToken;
+    $token = $user->createToken('auth_token')->plainTextToken;
 
     return response()->json([
         'user' => $user,
@@ -45,7 +45,7 @@ public function register(Request $request)
         'email' => $request->email,
         'password' => Hash::make($request->password),
     ]);
-    $token = $user->createToken($request->user_id)->plainTextToken;
+    $token = $user->createToken('auth_token')->plainTextToken;
     $data = [
         'message' => 'User created successfully',
         'status' => 201,

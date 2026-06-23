@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Http\Resources\CustomerResource;
 use Illuminate\Http\Request;
 
 class CustomerController
@@ -10,20 +11,28 @@ class CustomerController
     /**
      * Display a listing of the resource.
      */
-public function index()
-{
-    $customers = Customer::query()
-        ->withCount(['invoices as visit_count'])
-        ->withSum('invoices', 'total')
-        ->orderBy('visit_count', 'desc')
-        ->paginate(10);
+    public function index(Request $request)
+    {
+        $query = Customer::query()
+            ->withCount(['invoices as visit_count'])
+            ->withSum('invoices as total_spent', 'total_price');
 
-    return response()->json([
-        'message' => 'تم عرض جميع العملاء بنجاح',
-        'status' => 200,
-        'data' => $customers
-    ]);
-}
+        // Search by name or phone
+        if ($request->has('search') && $request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->where('customer_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('customer_phone', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $customers = $query->orderBy('visit_count', 'desc')->paginate(10);
+
+        return response()->json([
+            'message' => 'تم عرض جميع العملاء بنجاح',
+            'status' => 200,
+            'data' => CustomerResource::collection($customers)->response()->getData(true)
+        ]);
+    }
 
     /**
      * Store a newly created resource in storage.
@@ -38,14 +47,12 @@ public function index()
         $customer->customer_name = $request->customer_name;
         $customer->customer_phone = $request->customer_phone;
         $customer->save();
-        $data = [
+
+        return response()->json([
             'message' => 'تم إضافة العميل بنجاح',
             'status' => 201,
-            'customer' => $customer,
-        ];
-
-        return response()->json($data
-        );
+            'data' => new CustomerResource($customer),
+        ], 201);
     }
 
     /**
@@ -64,23 +71,20 @@ public function index()
             return response()->json($data
             );
         } else {
-            $data = [
+            return response()->json([
                 'message' => 'تم عرض العميل بنجاح',
                 'status' => 200,
-                'customer' => $customer,
-            ];
-
-            return response()->json($data
-            );
+                'data' => new CustomerResource($customer),
+            ]);
         }
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request)
+    public function update(Request $request, $id = null)
     {
-        $id = $request->id;
+        $id = $id ?? $request->id;
         $request->validate([
             'customer_name' => 'required',
             'customer_phone' => 'required',
@@ -98,23 +102,21 @@ public function index()
             $customer->customer_name = $request->customer_name;
             $customer->customer_phone = $request->customer_phone;
             $customer->update();
-            $data = [
+
+            return response()->json([
                 'message' => 'تم تعديل العميل بنجاح',
                 'status' => 200,
-                'customer' => $customer,
-            ];
-
-            return response()->json($data
-            );
+                'data' => new CustomerResource($customer),
+            ]);
         }
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request)
+    public function destroy(Request $request, $id = null)
     {
-        $id = $request->id;
+        $id = $id ?? $request->id;
         $customer = Customer::find($id);
         if ($customer == null) {
             $data = [

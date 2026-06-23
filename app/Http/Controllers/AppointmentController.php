@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\Invoiceitem;
 use App\Models\Shift;
 use App\Http\Resources\InvoiceResource;
+use App\Http\Resources\AppointmentResource;
 use Illuminate\Http\Request;
 
 class AppointmentController
@@ -16,29 +17,35 @@ class AppointmentController
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $appointments = Appointment::with(['customer', 'services'])->paginate(10);
+        $query = Appointment::with(['customer', 'services']);
 
-        $appointments->getCollection()->each(function ($appointment) {
-            $appointment->makeHidden(['updated_at']);
-            if ($appointment->customer) {
-                $appointment->customer->makeHidden(['created_at', 'updated_at']);
-            }
-            if ($appointment->services) {
-                $appointment->services->each(function ($service) {
-                    $service->makeHidden(['created_at', 'updated_at', 'pivot']);
-                });
-            }
-        });
+        // Filter by status
+        if ($request->has('status') && $request->status) {
+            $query->where('appointment_status', $request->status);
+        }
 
-        $data = [
+        // Filter by date
+        if ($request->has('date') && $request->date) {
+            $query->where('appointment_date', $request->date);
+        }
+
+        // Search by customer name or phone
+        if ($request->has('search') && $request->search) {
+            $query->whereHas('customer', function ($q) use ($request) {
+                $q->where('customer_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('customer_phone', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $appointments = $query->paginate(10);
+
+        return response()->json([
             'message' => 'تم عرض جميع المواعيد بنجاح',
             'status' => 200,
-            'data' => $appointments,
-        ];
-
-        return response()->json($data);
+            'data' => AppointmentResource::collection($appointments)->response()->getData(true),
+        ]);
     }
 
     /**
@@ -58,6 +65,20 @@ class AppointmentController
         ]);
 
         // Find or create customer by phone
+        $serviceIds = is_array($request->service_ids) ? $request->service_ids : [$request->service_ids];
+        $user = $request->user('sanctum');
+        if (!$user || $user->role !== 'admin') {
+            $invalidServicesCount = Service::whereIn('id', $serviceIds)
+                ->where('service_status', 'hidden')
+                ->count();
+            if ($invalidServicesCount > 0) {
+                return response()->json([
+                    'message' => 'بعض الخدمات المحددة غير متاحة للحجز حالياً.',
+                    'status' => 400
+                ], 400);
+            }
+        }
+
         $customer = Customer::where('customer_phone', $request->customer_phone)->first();
         if (! $customer) {
             $customer = Customer::create([
@@ -77,29 +98,19 @@ class AppointmentController
         ]);
 
         // Attach services
-        $serviceIds = is_array($request->service_ids) ? $request->service_ids : [$request->service_ids];
         $appointment->services()->attach($serviceIds);
 
         // Calculate total price
         $totalPrice = Service::whereIn('id', $serviceIds)->sum('service_price');
 
-        // Load relations and hide timestamps
+        // Load relations
         $appointment->load(['customer', 'services']);
-        $appointment->makeHidden(['updated_at']);
-        if ($appointment->customer) {
-            $appointment->customer->makeHidden(['created_at', 'updated_at']);
-        }
-        if ($appointment->services) {
-            $appointment->services->each(function ($service) {
-                $service->makeHidden(['created_at', 'updated_at', 'pivot']);
-            });
-        }
+        $appointment->total_price = floatval($totalPrice);
 
         return response()->json([
             'message' => 'تم إنشاء الموعد بنجاح',
             'status' => 201,
-            'total_price' => floatval($totalPrice),
-            'data' => $appointment,
+            'data' => new AppointmentResource($appointment),
         ], 201);
     }
 
@@ -117,20 +128,10 @@ class AppointmentController
             ], 404);
         }
 
-        $appointment->makeHidden(['updated_at']);
-        if ($appointment->customer) {
-            $appointment->customer->makeHidden(['created_at', 'updated_at']);
-        }
-        if ($appointment->services) {
-            $appointment->services->each(function ($service) {
-                $service->makeHidden(['created_at', 'updated_at', 'pivot']);
-            });
-        }
-
         return response()->json([
             'message' => 'تم عرض الموعد بنجاح',
             'status' => 200,
-            'data' => $appointment,
+            'data' => new AppointmentResource($appointment),
         ]);
     }
 
@@ -198,21 +199,12 @@ class AppointmentController
         $totalPrice = Service::whereIn('id', $serviceIds)->sum('service_price');
 
         $appointment->load(['customer', 'services']);
-        $appointment->makeHidden(['updated_at']);
-        if ($appointment->customer) {
-            $appointment->customer->makeHidden(['created_at', 'updated_at']);
-        }
-        if ($appointment->services) {
-            $appointment->services->each(function ($service) {
-                $service->makeHidden(['created_at', 'updated_at', 'pivot']);
-            });
-        }
+        $appointment->total_price = floatval($totalPrice);
 
         return response()->json([
             'message' => 'تم تعديل الموعد بنجاح',
             'status' => 200,
-            'total_price' => floatval($totalPrice),
-            'data' => $appointment,
+            'data' => new AppointmentResource($appointment),
         ]);
     }
 
@@ -311,28 +303,14 @@ class AppointmentController
             }
         }
 
+        $appointment->load(['customer', 'services']);
+
         return response()->json([
             'message' => 'تم تغيير حالة الموعد بنجاح',
             'status' => 200,
             'data' => [
                 'appointment_status' => $appointment->appointment_status,
-                'appointment' => [
-                    'id' => $appointment->id,
-                    'customer_id' => $appointment->customer_id,
-                    'appointment_date' => $appointment->appointment_date,
-                    'appointment_time' => $appointment->appointment_time,
-                    'source' => $appointment->source,
-                    'appointment_status' => $appointment->appointment_status,
-                    'appointment_notes' => $appointment->appointment_notes,
-                    'services' => $appointment->services->map(function ($service) {
-                        return [
-                            'id' => $service->id,
-                            'service_name' => $service->service_name,
-                            'service_price' => (float) $service->service_price,
-                            'service_duration' => (int) $service->service_duration,
-                        ];
-                    }),
-                ],
+                'appointment' => new AppointmentResource($appointment),
                 'invoice' => $invoiceData,
             ],
         ]);

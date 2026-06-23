@@ -26,7 +26,8 @@ class InvoiceResource extends JsonResource
             'barber_name'      => $this->barber?->barber_name,
 
             // تفاصيل الحجز
-            'appointment_date' => $this->appointment ? $this->appointment->appointment_date . ' ' . $this->appointment->appointment_time : null,
+            'appointment_date' => $this->appointment?->appointment_date,
+            'appointment_time' => $this->appointment && $this->appointment->appointment_time ? date('H:i', strtotime($this->appointment->appointment_time)) : null,
 
             // لفينا على عناصر الفاتورة وخدنا اللي يهمنا
             'items'            => $this->invoiceitems->map(function ($item) {

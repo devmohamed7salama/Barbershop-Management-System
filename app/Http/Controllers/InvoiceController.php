@@ -15,14 +15,32 @@ class InvoiceController
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $invoices = Invoice::with(['customer', 'barber', 'appointment', 'invoiceitems.service'])->paginate(10);
+        $query = Invoice::with(['customer', 'barber', 'appointment', 'invoiceitems.service']);
+
+        if ($request->has('barber_id') && $request->barber_id) {
+            $query->where('barber_id', $request->barber_id);
+        }
+
+        if ($request->has('customer_id') && $request->customer_id) {
+            $query->where('customer_id', $request->customer_id);
+        }
+
+        if ($request->has('shift_id') && $request->shift_id) {
+            $query->where('shift_id', $request->shift_id);
+        }
+
+        if ($request->has('date') && $request->date) {
+            $query->whereDate('created_at', $request->date);
+        }
+
+        $invoices = $query->paginate(10);
 
         return response()->json([
             'message' => 'تم عرض جميع الفواتير بنجاح',
             'status' => 200,
-            'data' => InvoiceResource::collection($invoices),
+            'data' => InvoiceResource::collection($invoices)->response()->getData(true),
         ]);
     }
 
@@ -102,13 +120,11 @@ class InvoiceController
         // Load relations
         $invoice->load(['customer', 'barber', 'appointment', 'invoiceitems.service']);
 
-        $data = [
+        return response()->json([
             'message' => 'تم انشاء فاتورة بنجاح',
             'status' => 201,
-            'invoice' => new InvoiceResource($invoice),
-        ];
-
-        return response()->json($data, 201);
+            'data' => new InvoiceResource($invoice),
+        ], 201);
     }
 
     /**
@@ -117,8 +133,8 @@ class InvoiceController
     public function show(Request $request)
     {
         $id = $request->id;
-        $invoice=Invoice::find($id);
-        if (!$invoice) {
+        $invoice = Invoice::find($id);
+        if (! $invoice) {
             return response()->json([
                 'message' => 'الفاتورة غير موجودة',
                 'status' => 404,
@@ -224,5 +240,93 @@ class InvoiceController
             'message' => 'تم حذف الفاتورة بنجاح',
             'status' => 200,
         ]);
+    }
+
+    /**
+     * Store a quick invoice without appointment.
+     */
+    public function quickStore(Request $request)
+    {
+        $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'customer_phone' => 'required|string',
+            'barber_id' => 'required|exists:barbers,id',
+            'service_ids' => 'required_without:items|array',
+            'service_ids.*' => 'exists:services,id',
+            'items' => 'required_without:service_ids|array',
+            'items.*.service_id' => 'exists:services,id',
+        ]);
+
+        $activeShift = Shift::where('shift_status', 'open')->first();
+        if (! $activeShift) {
+            return response()->json([
+                'message' => 'لا يوجد شيفت مفتوح حالياً. يرجى فتح شيفت أولاً.',
+                'status' => 400,
+            ], 400);
+        }
+
+        // Find or create customer
+        $customer = Customer::where('customer_phone', $request->customer_phone)->first();
+        if (! $customer) {
+            $customer = Customer::create([
+                'customer_name' => $request->customer_name,
+                'customer_phone' => $request->customer_phone,
+            ]);
+        } else {
+            if ($request->customer_name && $customer->customer_name !== $request->customer_name) {
+                $customer->update(['customer_name' => $request->customer_name]);
+            }
+        }
+
+        // Gather service IDs
+        $serviceIds = [];
+        if ($request->has('service_ids')) {
+            $serviceIds = $request->service_ids;
+        } elseif ($request->has('items')) {
+            $serviceIds = collect($request->items)->pluck('service_id')->toArray();
+        }
+
+        $itemsData = [];
+        $totalPrice = 0;
+
+        foreach ($serviceIds as $serviceId) {
+            $service = Service::find($serviceId);
+            if ($service) {
+                $price = floatval($service->service_price);
+                $totalPrice += $price;
+                $itemsData[] = [
+                    'service_id' => $service->id,
+                    'price' => $price,
+                ];
+            }
+        }
+
+        // Create the invoice without appointment_id
+        $invoice = Invoice::create([
+            'customer_id' => $customer->id,
+            'barber_id' => $request->barber_id,
+            'shift_id' => $activeShift->id,
+            'appointment_id' => null,
+            'total_price' => $totalPrice,
+        ]);
+
+        // Create invoice items
+        foreach ($itemsData as $itemData) {
+            Invoiceitem::create([
+                'invoice_id' => $invoice->id,
+                'service_id' => $itemData['service_id'],
+                'quantity' => 1,
+                'price' => $itemData['price'],
+            ]);
+        }
+
+        // Load relations
+        $invoice->load(['customer', 'barber', 'appointment', 'invoiceitems.service']);
+
+        return response()->json([
+            'message' => 'تم انشاء الفاتورة السريعة بنجاح',
+            'status' => 201,
+            'data' => new InvoiceResource($invoice),
+        ], 201);
     }
 }

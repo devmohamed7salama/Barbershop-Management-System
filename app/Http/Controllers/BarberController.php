@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barber;
+use App\Http\Resources\BarberResource;
 use Illuminate\Http\Request;
 
 class BarberController
@@ -10,16 +11,27 @@ class BarberController
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $barbers = Barber::paginate(10);
-        $data = [
+        $query = Barber::query();
+
+        // Filter by status
+        if ($request->has('status') && $request->status) {
+            $query->where('barber_status', $request->status);
+        }
+
+        // Search by name
+        if ($request->has('search') && $request->search) {
+            $query->where('barber_name', 'like', '%' . $request->search . '%');
+        }
+
+        $barbers = $query->paginate(10);
+
+        return response()->json([
             'message' => 'تم عرض جميع الحلاقين بنجاح',
             'status' => 200,
-            'barbers' => $barbers,
-        ];
-
-        return response()->json($data);
+            'data' => BarberResource::collection($barbers)->response()->getData(true),
+        ]);
     }
 
     /**
@@ -33,9 +45,11 @@ class BarberController
             'barber_nid' => 'required|unique:barbers',
             'salary' => 'required',
         ]);
+
         if ($request->barber_status == null) {
             $request->barber_status = 'available';
         }
+
         $barber = new Barber;
         $barber->barber_name = $request->barber_name;
         $barber->barber_phone = $request->barber_phone;
@@ -43,14 +57,12 @@ class BarberController
         $barber->salary = $request->salary;
         $barber->barber_status = $request->barber_status;
         $barber->save();
-        $data = [
+
+        return response()->json([
             'message' => 'تم إضافة حلاق بنجاح',
             'status' => 201,
-            'barber' => $barber,
-        ];
-
-        return response()->json($data
-        );
+            'data' => new BarberResource($barber),
+        ], 201);
     }
 
     /**
@@ -61,41 +73,33 @@ class BarberController
         $id = $request->id;
         $barber = Barber::find($id);
         if ($barber == null) {
-            $data = [
+            return response()->json([
                 'message' => 'الحلاق غير موجود',
                 'status' => 205,
-            ];
-
-            return response()->json($data
-            );
-        } else {
-            $data = [
-                'message' => 'تم عرض الحلاق بنجاح',
-                'status' => 200,
-                'barber' => $barber,
-            ];
-
-            return response()->json($data
-            );
+            ]);
         }
+
+        return response()->json([
+            'message' => 'تم عرض الحلاق بنجاح',
+            'status' => 200,
+            'data' => new BarberResource($barber),
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request)
+    public function update(Request $request, $id = null)
     {
-        $id = $request->id;
+        $id = $id ?? $request->id;
         $barber = Barber::find($id);
         if ($barber == null) {
-            $data = [
+            return response()->json([
                 'message' => 'الحلاق غير موجود',
                 'status' => 205,
-            ];
-
-            return response()->json($data
-            );
+            ]);
         }
+
         $request->validate([
             'barber_name' => 'required',
             'barber_phone' => 'unique:barbers,barber_phone,'.$id.',id|max:11|min:11',
@@ -106,46 +110,39 @@ class BarberController
         if ($request->barber_status == null) {
             $request->barber_status = 'available';
         }
+
         $barber->barber_name = $request->barber_name;
         $barber->barber_phone = $request->barber_phone;
         $barber->barber_nid = $request->barber_nid;
         $barber->salary = $request->salary;
         $barber->barber_status = $request->barber_status;
         $barber->update();
-        $data = [
+
+        return response()->json([
             'message' => 'تم تعديل الحلاق بنجاح',
             'status' => 200,
-            'barber' => $barber,
-        ];
-
-        return response()->json($data
-        );
+            'data' => new BarberResource($barber),
+        ]);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request)
+    public function destroy(Request $request, $id = null)
     {
-        $id = $request->id;
+        $id = $id ?? $request->id;
         $barber = Barber::find($id);
         if ($barber == null) {
-            $data = [
+            return response()->json([
                 'message' => 'الحلاق غير موجود',
                 'status' => 205,
-            ];
-
-            return response()->json($data
-            );
-        } else {
-            $barber->delete();
-            $data = [
-                'message' => 'تم حذف الحلاق بنجاح',
-                'status' => 200,
-            ];
-
-            return response()->json($data
-            );
+            ]);
         }
+
+        $barber->delete();
+        return response()->json([
+            'message' => 'تم حذف الحلاق بنجاح',
+            'status' => 200,
+        ]);
     }
 }

@@ -13,11 +13,10 @@ class DashboardController
 {
     public function index()
     {
-        // 1. Most Visiting Customers: Top 5 customers ordered by completed appointments count
+        // 1. Most Visiting Customers: Top 5 customers ordered by completed invoices count
         $mostVisitingCustomers = Customer::select('customers.id', 'customers.customer_name', 'customers.customer_phone')
-            ->selectRaw('COUNT(appointments.id) as visits_count')
-            ->join('appointments', 'customers.id', '=', 'appointments.customer_id')
-            ->where('appointments.appointment_status', 'completed')
+            ->selectRaw('COUNT(invoices.id) as visits_count')
+            ->join('invoices', 'customers.id', '=', 'invoices.customer_id')
             ->groupBy('customers.id', 'customers.customer_name', 'customers.customer_phone')
             ->orderBy('visits_count', 'desc')
             ->limit(5)

@@ -14,6 +14,19 @@ class AppointmentTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        
+        $admin = \App\Models\User::create([
+            'user_name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+        ]);
+        \Laravel\Sanctum\Sanctum::actingAs($admin);
+    }
+
     public function test_can_get_appointments_with_services()
     {
         // 1. Create a customer
@@ -84,7 +97,7 @@ class AppointmentTest extends TestCase
         $response = $this->postJson('/api/appoiments/create', $payload);
 
         $response->assertStatus(201);
-        $response->assertJsonPath('total_price', 25);
+        $response->assertJsonPath('data.total_price', 25);
         $response->assertJsonPath('data.customer.customer_name', 'Jane Smith');
         $response->assertJsonCount(2, 'data.services');
     }
@@ -141,7 +154,7 @@ class AppointmentTest extends TestCase
         $response = $this->postJson("/api/appoiments/update/{$appointment->id}", $payload);
 
         $response->assertStatus(200);
-        $response->assertJsonPath('total_price', 5);
+        $response->assertJsonPath('data.total_price', 5);
         $response->assertJsonPath('data.appointment_status', 'completed');
         $response->assertJsonPath('data.appointment_date', '2026-06-27');
     }

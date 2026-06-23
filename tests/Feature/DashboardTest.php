@@ -15,6 +15,19 @@ class DashboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        
+        $admin = \App\Models\User::create([
+            'user_name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+        ]);
+        \Laravel\Sanctum\Sanctum::actingAs($admin);
+    }
+
     public function test_dashboard_stats_endpoint_returns_correct_structure()
     {
         // 1. Create a customer
