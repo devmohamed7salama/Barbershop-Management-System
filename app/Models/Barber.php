@@ -1,0 +1,16 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Barber extends Model
+{
+    protected $fillable = [
+        'barber_name',
+        'barber_phone',
+        'barber_nid',
+        'salary',
+        'barber_status',
+    ];
+}
