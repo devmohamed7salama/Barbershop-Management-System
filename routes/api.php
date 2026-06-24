@@ -18,6 +18,13 @@ use Illuminate\Support\Facades\Route;
 */
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/appointments', [AppointmentController::class, 'store']);
+Route::post('/appoiments/create', [AppointmentController::class, 'store']);
+Route::get('/appointments/queue-count', [AppointmentController::class, 'queueCount']);
+Route::get('/services', [ServicesController::class, 'index']);
+Route::get('/services/{id}', [ServicesController::class, 'show']);
+Route::get('/barbers', [BarberController::class, 'index']);
+Route::get('/barbers/{id}', [BarberController::class, 'show']);
 
 /*
 |--------------------------------------------------------------------------
@@ -32,20 +39,20 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Client/User: View services
-    Route::get('/services', [ServicesController::class, 'index']);
-    Route::get('/services/{id}', [ServicesController::class, 'show']);
+
+
 
     // Client/User: View barbers
-    Route::get('/barbers', [BarberController::class, 'index']);
-    Route::get('/barbers/{id}', [BarberController::class, 'show']);
+
+
 
     // Client/User: Book & Manage appointments
     Route::get('/appointments', [AppointmentController::class, 'index']);
     Route::get('/appoiments', [AppointmentController::class, 'index']);
     Route::get('/appointments/{id}', [AppointmentController::class, 'show']);
     Route::get('/appoiments/{id}', [AppointmentController::class, 'show']);
-    Route::post('/appointments', [AppointmentController::class, 'store']);
-    Route::post('/appoiments/create', [AppointmentController::class, 'store']);
+
+
     Route::put('/appointments/{id}', [AppointmentController::class, 'update']);
     Route::post('/appoiments/update/{id}', [AppointmentController::class, 'update']);
     Route::delete('/appointments/{id}', [AppointmentController::class, 'destroy']);

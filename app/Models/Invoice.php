@@ -11,12 +11,21 @@ use App\Models\Appointment;
 class Invoice extends Model
 {
     protected $fillable = [
+        'invoice_number',
         'customer_id',
         'barber_id',
         'shift_id',
         'appointment_id',
         'total_price',
     ];
+
+    protected static function booted()
+    {
+        static::created(function ($invoice) {
+            $invoice->invoice_number = 'INV-' . date('Y') . '-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT);
+            $invoice->saveQuietly();
+        });
+    }
 
     public function customer()
     {

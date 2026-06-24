@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Customer;
 use Illuminate\Support\Facades\Hash;
+
 class AuthController
 {
     
@@ -38,13 +40,24 @@ public function register(Request $request)
     $request->validate([
         'user_name' => 'required',
         'email' => 'required|email|unique:users',
+        'phone' => 'required|string',
         'password' => 'required|min:6'
     ]);
     $user = User::create([
         'user_name' => $request->user_name,
         'email' => $request->email,
+        'phone' => $request->phone,
         'password' => Hash::make($request->password),
     ]);
+
+    // Sync guest customer name if they register with their phone
+    $customer = Customer::where('customer_phone', $request->phone)->first();
+    if ($customer) {
+        $customer->update([
+            'customer_name' => $request->user_name
+        ]);
+    }
+
     $token = $user->createToken('auth_token')->plainTextToken;
     $data = [
         'message' => 'User created successfully',

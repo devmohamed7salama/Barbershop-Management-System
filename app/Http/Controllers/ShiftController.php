@@ -13,7 +13,7 @@ class ShiftController
      */
     public function index()
     {
-        $shifts = Shift::paginate(10);
+        $shifts = Shift::orderBy("id", "desc")->paginate(10);
 
         return response()->json([
             'message' => 'تم عرض الشفتات بنجاح',

@@ -11,6 +11,7 @@ class InvoiceResource extends JsonResource
     {
         return [
             'id'               => $this->id,
+            'invoice_number'   => $this->invoice_number,
             'total_price'      => (float) $this->total_price, // Cast to float
             'total_services'   => (int) $this->invoiceitems->count(), // مجموع الخدمات المنفذة
             'created_at'       => $this->created_at->format('Y-m-d h:i A'), // شياكة في العرض

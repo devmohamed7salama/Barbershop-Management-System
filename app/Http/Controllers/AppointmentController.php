@@ -21,6 +21,13 @@ class AppointmentController
     {
         $query = Appointment::with(['customer', 'services']);
 
+        $user = $request->user('sanctum');
+        if ($user && $user->role !== 'admin') {
+            $query->whereHas('customer', function ($q) use ($user) {
+                $q->where('customer_phone', $user->phone);
+            });
+        }
+
         // Filter by status
         if ($request->has('status') && $request->status) {
             $query->where('appointment_status', $request->status);
@@ -39,7 +46,8 @@ class AppointmentController
             });
         }
 
-        $appointments = $query->paginate(10);
+        $perPage = $request->query('per_page', 10);
+        $appointments = $query->paginate($perPage);
 
         return response()->json([
             'message' => 'تم عرض جميع المواعيد بنجاح',
@@ -313,6 +321,49 @@ class AppointmentController
                 'appointment' => new AppointmentResource($appointment),
                 'invoice' => $invoiceData,
             ],
+        ]);
+    }
+
+    /**
+     * Get the queue count.
+     */
+    public function queueCount(Request $request)
+    {
+        $appointmentId = $request->query('appointment_id');
+
+        if ($appointmentId) {
+            $appointment = Appointment::find($appointmentId);
+            if (!$appointment) {
+                return response()->json([
+                    'message' => 'الموعد غير موجود',
+                    'status' => 404,
+                ], 404);
+            }
+
+            // Count pending appointments scheduled on the same date BEFORE this appointment
+            $queuePosition = Appointment::where('appointment_date', $appointment->appointment_date)
+                ->where('appointment_status', 'pending')
+                ->where('id', '<', $appointment->id)
+                ->count();
+
+            return response()->json([
+                'status' => 200,
+                'queue_count' => $queuePosition,
+            ]);
+        }
+
+        // Return total waiting count for today and overall
+        $today = now()->format('Y-m-d');
+        $totalPendingToday = Appointment::where('appointment_date', $today)
+            ->where('appointment_status', 'pending')
+            ->count();
+
+        $totalPendingOverall = Appointment::where('appointment_status', 'pending')->count();
+
+        return response()->json([
+            'status' => 200,
+            'today_queue_count' => $totalPendingToday,
+            'overall_queue_count' => $totalPendingOverall,
         ]);
     }
 }

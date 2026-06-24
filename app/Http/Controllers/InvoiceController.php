@@ -35,7 +35,7 @@ class InvoiceController
             $query->whereDate('created_at', $request->date);
         }
 
-        $invoices = $query->paginate(10);
+        $invoices = $query->orderBy('created_at', 'desc')->paginate(10);
 
         return response()->json([
             'message' => 'تم عرض جميع الفواتير بنجاح',
@@ -329,4 +329,19 @@ class InvoiceController
             'data' => new InvoiceResource($invoice),
         ], 201);
     }
+
+    /**
+     * View/Print receipt.
+     */
+    public function printReceipt($id)
+    {
+        $invoice = Invoice::with(['customer', 'barber', 'appointment', 'invoiceitems.service'])->find($id);
+
+        if (!$invoice) {
+            abort(404, 'الفاتورة غير موجودة');
+        }
+
+        return view('invoice_receipt', compact('invoice'));
+    }
 }
+

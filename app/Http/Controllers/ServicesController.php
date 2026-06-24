@@ -165,6 +165,10 @@ class ServicesController
             ]);
         }
 
+        if ($service->service_image && file_exists($service->service_image)) {
+            @unlink($service->service_image);
+        }
+
         $service->delete();
         return response()->json([
             'message' => 'تم حذف الخدمة بنجاح',

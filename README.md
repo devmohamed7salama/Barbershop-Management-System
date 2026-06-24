@@ -80,6 +80,10 @@ This repository contains the **Backend API** for the Barbershop Management Syste
    php artisan serve
    ```
 
+
+# Data
+## php artisan db:seed --class=DummyDataSeeder
+
 ---
 
 ## 🧪 الاختبارات الآلية (Automated Testing)
