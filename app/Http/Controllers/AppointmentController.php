@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\AppointmentResource;
+use App\Http\Resources\InvoiceResource;
 use App\Models\Appointment;
 use App\Models\Customer;
-use App\Models\Service;
 use App\Models\Invoice;
 use App\Models\Invoiceitem;
+use App\Models\Service;
 use App\Models\Shift;
-use App\Http\Resources\InvoiceResource;
-use App\Http\Resources\AppointmentResource;
 use Illuminate\Http\Request;
 
 class AppointmentController
@@ -41,13 +41,13 @@ class AppointmentController
         // Search by customer name or phone
         if ($request->has('search') && $request->search) {
             $query->whereHas('customer', function ($q) use ($request) {
-                $q->where('customer_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('customer_phone', 'like', '%' . $request->search . '%');
+                $q->where('customer_name', 'like', '%'.$request->search.'%')
+                    ->orWhere('customer_phone', 'like', '%'.$request->search.'%');
             });
         }
 
         $perPage = $request->query('per_page', 10);
-        $appointments = $query->paginate($perPage);
+        $appointments = $query->orderby('created_at', 'desc')->paginate($perPage);
 
         return response()->json([
             'message' => 'تم عرض جميع المواعيد بنجاح',
@@ -75,14 +75,14 @@ class AppointmentController
         // Find or create customer by phone
         $serviceIds = is_array($request->service_ids) ? $request->service_ids : [$request->service_ids];
         $user = $request->user('sanctum');
-        if (!$user || $user->role !== 'admin') {
+        if (! $user || $user->role !== 'admin') {
             $invalidServicesCount = Service::whereIn('id', $serviceIds)
                 ->where('service_status', 'hidden')
                 ->count();
             if ($invalidServicesCount > 0) {
                 return response()->json([
                     'message' => 'بعض الخدمات المحددة غير متاحة للحجز حالياً.',
-                    'status' => 400
+                    'status' => 400,
                 ], 400);
             }
         }
@@ -333,7 +333,7 @@ class AppointmentController
 
         if ($appointmentId) {
             $appointment = Appointment::find($appointmentId);
-            if (!$appointment) {
+            if (! $appointment) {
                 return response()->json([
                     'message' => 'الموعد غير موجود',
                     'status' => 404,

@@ -25,7 +25,7 @@ class CustomerController
             });
         }
 
-        $customers = $query->orderBy('visit_count', 'desc')->paginate(10);
+        $customers = $query->orderBy('created_at', 'desc')->paginate(10);
 
         return response()->json([
             'message' => 'تم عرض جميع العملاء بنجاح',
