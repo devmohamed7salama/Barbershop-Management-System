@@ -8,6 +8,7 @@ use App\Http\Controllers\BarberController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\RatingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,10 @@ Route::get('/services', [ServicesController::class, 'index']);
 Route::get('/services/{id}', [ServicesController::class, 'show']);
 Route::get('/barbers', [BarberController::class, 'index']);
 Route::get('/barbers/{id}', [BarberController::class, 'show']);
+
+// Public Ratings Routes
+Route::get('/ratings/invoice/{invoice_id}', [RatingController::class, 'getInvoiceForRating']);
+Route::post('/ratings', [RatingController::class, 'store']);
 
 /*
 |--------------------------------------------------------------------------
@@ -114,4 +119,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     // Dashboard Statistics (Admin)
     Route::get('/dashboard/stats', [DashboardController::class, 'index']);
+
+    // Ratings Management (Admin)
+    Route::get('/ratings', [RatingController::class, 'index']);
+    Route::delete('/ratings/{id}', [RatingController::class, 'destroy']);
 });

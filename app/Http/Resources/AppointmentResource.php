@@ -18,6 +18,8 @@ class AppointmentResource extends JsonResource
             'appointment_status' => $this->appointment_status,
             'appointment_notes' => $this->appointment_notes,
             'total_price' => isset($this->total_price) ? (float) $this->total_price : ($this->services ? (float) $this->services->sum('service_price') : 0.0),
+            'invoice_id' => $this->invoice?->id,
+            'rating_status' => $this->invoice?->rating_status ?? 'open',
             'customer' => $this->customer ? [
                 'id' => $this->customer->id,
                 'customer_name' => $this->customer->customer_name,

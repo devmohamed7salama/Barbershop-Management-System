@@ -314,6 +314,27 @@
             <span class="value">{{ number_format($invoice->total_price, 2) }} ج.م</span>
         </div>
 
+        <div class="divider"></div>
+
+        <!-- Rating Section with QR Code -->
+        <div class="rating-qr-section" style="text-align: center; margin: 20px 0; padding: 15px; border-radius: 12px; background-color: #faf8f0; border: 1px solid #eadeb8;">
+            <p style="font-weight: 700; color: #1A1A1A; margin: 0 0 5px 0; font-size: 14px; font-family: 'Cairo', sans-serif;">شاركنا رأيك وقيم زيارتك!</p>
+            <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 12px 0; font-family: 'Cairo', sans-serif;">امسح الكود أدناه لتقييم صالوننا والحلاق الخاص بك</p>
+            
+            @php
+                $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+                $ratingUrl = rtrim($frontendUrl, '/') . '/rate/' . $invoice->id;
+            @endphp
+            
+            <div style="background-color: white; display: inline-block; padding: 10px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 8px;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={{ urlencode($ratingUrl) }}" alt="QR Code لتقييم الخدمة" style="display: block; width: 130px; height: 130px;" />
+            </div>
+            
+            <div >
+                <a style="font-size: 14px;text-decoration: none; font-weight: 600; color: #D4AF37; font-family: 'Cairo', sans-serif; word-break: break-all;" href="{{ $ratingUrl }}" target="_blank">لينك صفحة التقيم</a>
+            </div>
+        </div>
+
         <!-- Footer -->
         <div class="footer">
             <p>نشكركم على زيارتكم لصالوننا الفاخر!</p>

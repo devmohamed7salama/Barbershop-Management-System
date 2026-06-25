@@ -68,7 +68,7 @@ class DashboardController
             ->where('appointments.appointment_status', 'completed')
             ->groupBy('services.id', 'services.service_name', 'services.service_price')
             ->orderBy('demand_count', 'desc')
-            ->limit(5)
+            ->limit(4)
             ->get();
 
         $stats = [

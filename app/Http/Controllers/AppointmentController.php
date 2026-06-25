@@ -19,7 +19,7 @@ class AppointmentController
      */
     public function index(Request $request)
     {
-        $query = Appointment::with(['customer', 'services']);
+        $query = Appointment::with(['customer', 'services', 'invoice']);
 
         $user = $request->user('sanctum');
         if ($user && $user->role !== 'admin') {
@@ -127,7 +127,7 @@ class AppointmentController
      */
     public function show($id)
     {
-        $appointment = Appointment::with(['customer', 'services'])->find($id);
+        $appointment = Appointment::with(['customer', 'services', 'invoice'])->find($id);
 
         if (! $appointment) {
             return response()->json([
@@ -311,7 +311,7 @@ class AppointmentController
             }
         }
 
-        $appointment->load(['customer', 'services']);
+        $appointment->load(['customer', 'services', 'invoice']);
 
         return response()->json([
             'message' => 'تم تغيير حالة الموعد بنجاح',

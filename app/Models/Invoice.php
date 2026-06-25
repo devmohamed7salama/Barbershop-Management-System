@@ -17,6 +17,7 @@ class Invoice extends Model
         'shift_id',
         'appointment_id',
         'total_price',
+        'rating_status',
     ];
 
     protected static function booted()
@@ -50,5 +51,10 @@ class Invoice extends Model
     public function invoiceitems()
     {
         return $this->hasMany(Invoiceitem::class);
+    }
+
+    public function rating()
+    {
+        return $this->hasOne(Rating::class);
     }
 }
